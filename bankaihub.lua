@@ -8,7 +8,7 @@ local function track(conn) table.insert(HUB.conns, conn); return conn end
 local function trackDrawing(d) if d then table.insert(HUB.drawings, d) end; return d end
 
 local Window = Library:CreateWindow({
-    Name = "BANKAI HUB | Ein Ei stehlen",
+    Name = "BANKAI HUB | Solara Edition",
     LoadingAnimation = true,
     LoadingText = "BANKAI HUB",
     LoadingDuration = 2.0,
@@ -93,7 +93,7 @@ local function safeCallback(fn)
 end
 
 -- ==============================================================================
--- CLIENT AC NEUTRALIZER & UGI CONSTANT WIPER
+-- CLIENT AC NEUTRALIZER (SOLARA SAFE COMPATIBILITY)
 -- ==============================================================================
 local function bypassClientDetections()
     if typeof(filtergc) ~= "function" or typeof(debug) ~= "table" or typeof(debug.getupvalues) ~= "function" then
@@ -244,14 +244,19 @@ do
     end
 end
 
+-- Ejecución segura no bloqueante adaptada para Solara
 task.spawn(function()
-    pcall(AcSlices.FreezeTables)
-    task.wait()
-    pcall(AcSlices.WipeUGI)
-    task.wait()
-    pcall(AcSlices.ScrubX14)
-    task.wait()
-    pcall(AcSlices.SanitizeState)
+    pcall(function()
+        if typeof(getgc) == "function" or (debug and typeof(debug.getgc) == "function") then
+            pcall(AcSlices.FreezeTables)
+            task.wait()
+            pcall(AcSlices.WipeUGI)
+            task.wait()
+            pcall(AcSlices.ScrubX14)
+            task.wait()
+            pcall(AcSlices.SanitizeState)
+        end
+    end)
 end)
 
 -- ==============================================================================
@@ -277,7 +282,7 @@ local function GetRootCFrame()
 end
 
 -- ==============================================================================
--- BAC TELEMETRY PACKET SPOOFER
+-- BAC TELEMETRY PACKET SPOOFER (SOLARA COMPATIBLE HOOK)
 -- ==============================================================================
 local bxor = bit32.bxor
 local unpack = table.unpack
@@ -410,40 +415,42 @@ end
 
 local HookFn = hookfunction or replaceclosure or hookfunc or detour_function
 
-if anyRemote and HookFn then
-    local oldFire
-    oldFire = HookFn(anyRemote.FireServer, function(self, ...)
-        local args = table.pack(...)
-        if not remoteSet[self] then
-            return oldFire(self, unpack(args, 1, args.n))
-        end
-
-        local a1 = args[1]
-
-        if type(a1) == "string" and #a1 == 12 then
-            if not model then
-                model = learn(self, a1, args[2])
-            else
-                local c = parseCounter(rawget(model.state, model.map.marker))
-                if c and encode(model, c) ~= a1 then
-                    local m = learn(self, a1, args[2])
-                    if m then m.spoofed = model.spoofed; model = m end
-                end
+pcall(function()
+    if anyRemote and typeof(HookFn) == "function" then
+        local oldFire
+        oldFire = HookFn(anyRemote.FireServer, function(self, ...)
+            local args = table.pack(...)
+            if not remoteSet[self] then
+                return oldFire(self, unpack(args, 1, args.n))
             end
+
+            local a1 = args[1]
+
+            if type(a1) == "string" and #a1 == 12 then
+                if not model then
+                    model = learn(self, a1, args[2])
+                else
+                    local c = parseCounter(rawget(model.state, model.map.marker))
+                    if c and encode(model, c) ~= a1 then
+                        local m = learn(self, a1, args[2])
+                        if m then m.spoofed = model.spoofed; model = m end
+                    end
+                end
+                return oldFire(self, unpack(args, 1, args.n))
+            end
+
+            if model and type(a1) == "string" and #a1 == 4 then
+                local c = liveCounter(model)
+                args[1] = encode(model, c)
+                args[2] = refreshArg2(model)
+                model.spoofed = (model.spoofed or 0) + 1
+                return oldFire(self, unpack(args, 1, math.max(args.n, 2)))
+            end
+
             return oldFire(self, unpack(args, 1, args.n))
-        end
-
-        if model and type(a1) == "string" and #a1 == 4 then
-            local c = liveCounter(model)
-            args[1] = encode(model, c)
-            args[2] = refreshArg2(model)
-            model.spoofed = (model.spoofed or 0) + 1
-            return oldFire(self, unpack(args, 1, math.max(args.n, 2)))
-        end
-
-        return oldFire(self, unpack(args, 1, args.n))
-    end)
-end
+        end)
+    end
+end)
 
 task.spawn(function()
     while not HUB.dead do
@@ -461,7 +468,7 @@ task.spawn(function()
     end
 end)
 
--- Real-time Memory Evidence Scrubber
+-- Real-time Memory Evidence Scrubber (Solara Safe)
 task.spawn(function()
     if not (getgc or (debug and debug.getgc)) then return end
     local st = nil
@@ -1863,16 +1870,10 @@ function Boss.InstallHazardHook()
     if Boss.hazardHookTried then return false end
     Boss.hazardHookTried = true
 
-    local touchOnly = false
-    pcall(function()
-        touchOnly = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-    end)
-    if touchOnly then
-        Notify("Peligros del Jefe", "La inmunidad a peligros no está soportada en móviles", "Error")
+    if not HookFn or typeof(HookFn) ~= "function" then
         return false
     end
 
-    if not HookFn then return false end
     local hazard = GetNetRemote("RE/BossEvent/HazardHit")
     if type(hazard) ~= "userdata" or not hazard:IsA("RemoteEvent") then return false end
 
@@ -1889,33 +1890,6 @@ function Boss.InstallHazardHook()
     end)
     Boss.hazardHook = ok
     return ok
-end
-
-local function DropHeldEgg()
-    local rf = GetNetRemote("RF/EggWorld/AskFieldEggDrop")
-    if rf then pcall(function() rf:InvokeServer() end) end
-    if EggState and EggState.DropFieldEgg then pcall(EggState.DropFieldEgg) end
-end
-
-local function BuyAffordableTrails()
-    local rf = GetNetRemote("RF/Trailwear/AskPurchase")
-    local TrailsData = RS:FindFirstChild("Data") and RS.Data:FindFirstChild("Trails") and require(RS.Data.Trails)
-    local save = nil
-    pcall(function() save = SaveModule and SaveModule.Get and SaveModule.Get() end)
-    if not rf or not TrailsData or not save then return end
-
-    local myMoney = tonumber(save.Money) or 0
-    local inv = save.TrailInventory or {}
-
-    for _, t in pairs(TrailsData.Directory or TrailsData) do
-        if type(t) == "table" and t._id and not inv[t._id] then
-            local price = tonumber(t.Price) or math.huge
-            if myMoney >= price then
-                pcall(function() rf:InvokeServer(t._id) end)
-                task.wait(0.25)
-            end
-        end
-    end
 end
 
 local function SetNoKnockback(enabled)
@@ -2522,7 +2496,6 @@ local StealSub = EggsTab:AddSubTab("Auto Robo")
 local HatchSub = EggsTab:AddSubTab("Auto Eclosionar y Plantar")
 local EggEspSub = EggsTab:AddSubTab("ESP de Huevos")
 
--- SubTab: Auto Robo
 StealSub:AddToggle({
     Name = "Auto Robo de Huevos", Default = false, Flag = "steal_auto",
     Callback = safeCallback(function(v)
@@ -2567,7 +2540,6 @@ StealSub:AddButton({
     end)
 })
 
--- SubTab: Auto Eclosionar y Plantar
 HatchSub:AddToggle({
     Name = "Auto Eclosionar Huevos Listos", Default = false, Flag = "hatch_auto",
     Callback = safeCallback(function(v)
@@ -2601,7 +2573,6 @@ HatchSub:AddButton({
     end)
 })
 
--- SubTab: ESP de Huevos
 EggEspSub:AddToggle({
     Name = "ESP de Huevos Activado", Default = false, Flag = "esp_eggs_enabled",
     Callback = safeCallback(function(v)
@@ -2636,7 +2607,6 @@ local SalesSub    = BaseTab:AddSubTab("Auto Venta")
 local EventsSub   = BaseTab:AddSubTab("Eventos y Jefes")
 local RewardsSub  = BaseTab:AddSubTab("Reclamar Recompensas")
 
--- SubTab: Homestead y Cinta
 UpgradesSub:AddToggle({
     Name = "Auto Mejorar Base / Parcela", Default = false, Flag = "up_base_auto",
     Callback = function(v) autoUpgradeBase = v end
@@ -2664,7 +2634,6 @@ UpgradesSub:AddButton({
     end)
 })
 
--- SubTab: Mascotas y Mochila
 PetsSub:AddToggle({
     Name = "Auto Equipar Mejores Mascotas", Default = false, Flag = "equip_best_pets",
     Callback = function(v) autoEquipBestPets = v end
@@ -2677,7 +2646,6 @@ PetsSub:AddButton({
     end)
 })
 
--- SubTab: Auto Venta
 SalesSub:AddToggle({
     Name = "Auto Vender Mascotas de Bajo Nivel", Default = false, Flag = "auto_sell_pets",
     Callback = function(v) autoSellPets = v end
@@ -2709,7 +2677,6 @@ SalesSub:AddButton({
     end)
 })
 
--- SubTab: Eventos y Jefes
 EventsSub:AddToggle({
     Name = "Combate de Jefe AUTO (Entrar + Pelear + Esquivar + Reclamar)", Default = false, Flag = "auto_fight_boss",
     Callback = safeCallback(function(v)
@@ -2735,6 +2702,8 @@ EventsSub:AddToggle({
         if v then
             if Boss.InstallHazardHook() then
                 Notify("Peligros del Jefe", "Inmune: reportes de daño bloqueados", "Success")
+            else
+                Notify("Peligros del Jefe", "Ejecutor sin soporte de hooks avanzados", "Error")
             end
         else
             Notify("Peligros del Jefe", "Daño normal activado", "Info")
@@ -2772,7 +2741,7 @@ EventsSub:AddButton({
         if n and n > 0 then
             Notify("Maestría del Jefe", "Se reclamaron " .. tostring(n) .. " recompensa(s)", "Success")
         else
-            Notify("Maestría del Jefe", "Nada reclambale por ahora", "Info")
+            Notify("Maestría del Jefe", "Nada reclamable por ahora", "Info")
         end
     end)
 })
@@ -2793,7 +2762,6 @@ EventsSub:AddButton({
     end)
 })
 
--- SubTab: Reclamar Recompensas
 RewardsSub:AddToggle({
     Name = "Auto Reclamar Ganancias de Ausencia y Códex", Default = false, Flag = "claim_auto_rewards",
     Callback = function(v) autoClaimRewards = v end
@@ -2814,7 +2782,6 @@ do
 local BatSub   = CombatTab:AddSubTab("Aura de Bate")
 local GuardSub = CombatTab:AddSubTab("Defensa y Guardias")
 
--- SubTab: Aura de Bate
 BatSub:AddToggle({
     Name = "Aura de Bate / Bofetada", Default = false, Flag = "bat_aura_enabled",
     Callback = safeCallback(function(v)
@@ -2839,7 +2806,6 @@ BatSub:AddButton({
     end)
 })
 
--- SubTab: Defensa y Guardias
 GuardSub:AddToggle({
     Name = "Anti-Trampas (Destruir Hitboxes Enemigas)", Default = true, Flag = "avoid_traps",
     Callback = safeCallback(function(v)
@@ -2881,7 +2847,6 @@ local PlotTpSub   = PlayerTab:AddSubTab("Viajes a Parcelas")
 local PlayerTpSub = PlayerTab:AddSubTab("Viajes a Jugadores")
 local PerfSub     = PlayerTab:AddSubTab("Visuales y Rendimiento")
 
--- SubTab: Movimiento
 MoveSub:AddToggle({
     Name = "Activar WalkSpeed Personalizada", Default = false, Flag = "speed_enabled",
     Callback = safeCallback(function(v)
@@ -2932,7 +2897,6 @@ MoveSub:AddToggle({
     Callback = function(v) SetAntiAFK(v) end
 })
 
--- SubTab: Viajes a Zonas
 local selectedAreaTp = "Base / Plot"
 local areaKeys = {}
 for k in pairs(AREA_COORDINATES) do table.insert(areaKeys, k) end
@@ -2959,7 +2923,6 @@ AreaTpSub:AddButton({
     end)
 })
 
--- SubTab: Viajes a Parcelas
 local selectedPlotNum = "Plot 1"
 local plotOptions = { "Plot 1", "Plot 2", "Plot 3", "Plot 4", "Plot 5", "Plot 6", "Plot 7", "My Plot" }
 
@@ -2982,7 +2945,6 @@ PlotTpSub:AddButton({
     end)
 })
 
--- SubTab: Viajes a Jugadores
 local selectedPlayerName = nil
 local function GetPlayerList()
     local names = {}
@@ -3021,7 +2983,6 @@ PlayerTpSub:AddButton({
     end)
 })
 
--- SubTab: Visuales y Rendimiento
 PerfSub:AddToggle({
     Name = "Fullbright (Iluminación Día Constante)", Default = false, Flag = "fullbright",
     Callback = function(v) SetFullbright(v) end
@@ -3084,8 +3045,8 @@ ConfigSub:AddButton({
 })
 
     ConfigSub:AddParagraph({
-        Title = "BANKAI HUB | Ein Ei stehlen",
-        Content = "Versión 4.2.2 (Producción)\nCon neutralizador de AC/UGI, falsificador BAC, limpieza de evidencias, filtro estricto de rareza, recorrido por camino limpio y colocación automática en corral."
+        Title = "BANKAI HUB | Solara Edition",
+        Content = "Versión 4.2.3 (Solara Compat)\nAdaptado para omitir funciones de depuración ausentes y cargar la interfaz correctamente."
     })
 end
 
@@ -3118,4 +3079,4 @@ HUB.Unload = function()
     _G.BANKAIHUB_StealAnEgg = nil
 end
 
-Notify("BANKAI HUB", "¡Script cargado con éxito!", "Success", 3.5)
+Notify("BANKAI HUB", "¡Script cargado con éxito en Solara!", "Success", 3.5)
