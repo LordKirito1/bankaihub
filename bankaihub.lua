@@ -1,3 +1,21 @@
+-- ==============================================================================
+-- CARGADOR DE LIBRERÍA DE INTERFAZ (OXIDE UI / SENA LIBRARY)
+-- ==============================================================================
+local Library = nil
+local okLib, libErr = pcall(function()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/LSSOPS/OpenSource/refs/heads/main/SenaHub_Steal_An_Egg!.lua"))()
+end)
+
+-- Si la librería global ya existe en el entorno, la usamos directamente
+if type(_G.Library) == "table" then
+    Library = _G.Library
+elseif type(getgenv) == "function" and type(getgenv().Library) == "table" then
+    Library = getgenv().Library
+end
+
+-- ==============================================================================
+-- INICIALIZACIÓN DE BANKAI HUB
+-- ==============================================================================
 do
     local prev = _G.BANKAIHUB_StealAnEgg
     if prev and type(prev.Unload) == "function" then pcall(prev.Unload) end
@@ -8,7 +26,7 @@ local function track(conn) table.insert(HUB.conns, conn); return conn end
 local function trackDrawing(d) if d then table.insert(HUB.drawings, d) end; return d end
 
 local Window = Library:CreateWindow({
-    Name = "BANKAI HUB | Solara Edition",
+    Name = "BANKAI HUB | Ein Ei stehlen",
     LoadingAnimation = true,
     LoadingText = "BANKAI HUB",
     LoadingDuration = 2.0,
@@ -93,7 +111,7 @@ local function safeCallback(fn)
 end
 
 -- ==============================================================================
--- CLIENT AC NEUTRALIZER (SOLARA SAFE COMPATIBILITY)
+-- CLIENT AC NEUTRALIZER & UGI CONSTANT WIPER
 -- ==============================================================================
 local function bypassClientDetections()
     if typeof(filtergc) ~= "function" or typeof(debug) ~= "table" or typeof(debug.getupvalues) ~= "function" then
@@ -244,7 +262,6 @@ do
     end
 end
 
--- Ejecución segura no bloqueante adaptada para Solara
 task.spawn(function()
     pcall(function()
         if typeof(getgc) == "function" or (debug and typeof(debug.getgc) == "function") then
@@ -282,7 +299,7 @@ local function GetRootCFrame()
 end
 
 -- ==============================================================================
--- BAC TELEMETRY PACKET SPOOFER (SOLARA COMPATIBLE HOOK)
+-- BAC TELEMETRY PACKET SPOOFER
 -- ==============================================================================
 local bxor = bit32.bxor
 local unpack = table.unpack
@@ -468,7 +485,7 @@ task.spawn(function()
     end
 end)
 
--- Real-time Memory Evidence Scrubber (Solara Safe)
+-- Real-time Memory Evidence Scrubber
 task.spawn(function()
     if not (getgc or (debug and debug.getgc)) then return end
     local st = nil
@@ -1870,9 +1887,7 @@ function Boss.InstallHazardHook()
     if Boss.hazardHookTried then return false end
     Boss.hazardHookTried = true
 
-    if not HookFn or typeof(HookFn) ~= "function" then
-        return false
-    end
+    if not HookFn or typeof(HookFn) ~= "function" then return false end
 
     local hazard = GetNetRemote("RE/BossEvent/HazardHit")
     if type(hazard) ~= "userdata" or not hazard:IsA("RemoteEvent") then return false end
@@ -2936,7 +2951,7 @@ PlotTpSub:AddButton({
         local slotNum = selectedPlotNum == "My Plot" and GetLocalSlot() or tonumber(selectedPlotNum:match("%d+")) or 1
         local plot = Workspace.Plots:FindFirstChild(tostring(slotNum))
         local targetPos = plot and (plot:FindFirstChild("CenterPoint") and plot.CenterPoint.Position or plot:GetPivot().Position)
-        if targetPos then
+        if targetPos me
             TravelRoadPath(targetPos + Vector3.new(0, 2, 0), glideSpeed or 200)
             Notify("Parcela", "Llegaste a la Parcela " .. tostring(slotNum), "Success")
         else
@@ -3046,7 +3061,7 @@ ConfigSub:AddButton({
 
     ConfigSub:AddParagraph({
         Title = "BANKAI HUB | Solara Edition",
-        Content = "Versión 4.2.3 (Solara Compat)\nAdaptado para omitir funciones de depuración ausentes y cargar la interfaz correctamente."
+        Content = "Versión 4.2.3 (Solara Standalone)\nCon cargador de librería integrado."
     })
 end
 
